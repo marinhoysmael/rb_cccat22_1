@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import crypto from "crypto";
 import pgp from "pg-promise";
+import { validateAccount } from "./validateAccount";
 const app = express();
 app.use(express.json());
 
@@ -10,10 +11,20 @@ app.post("/signup", async (req: Request, res: Response) => {
     const account = req.body;
     console.log("/signup", account);
     const accountId = crypto.randomUUID();
-    await connection.query("insert into ccca.account (account_id, name, email, document, password) values ($1, $2, $3, $4, $5)", [accountId, account.name, account.email, account.document, account.password]);
-    res.json({
-        accountId
-    });
+
+    const errors = await validateAccount(account);
+    
+    console.log("Account erros:", errors);
+    
+    if(errors.length > 0){
+        res.status(400).json(errors);
+    }else{
+        await connection.query("insert into ccca.account (account_id, name, email, document, password) values ($1, $2, $3, $4, $5)", [accountId, account.name, account.email, account.document, account.password]);
+        res.json({
+            accountId
+        });
+    }
+
 });
 
 app.get("/accounts/:accountId", async (req: Request, res: Response) => {
